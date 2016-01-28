@@ -1,0 +1,106 @@
+package corelogic;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.TreeMap;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import framework.ConnectionInfoUDP;
+import framework.gameInputObject;
+import gameEntities.Player;
+import gameLevels.GameStage;
+import gameObjects.GameStateObject;
+
+/*
+ * create separate thread for broadcast timer
+ */
+public class GameState implements Runnable {
+	//game world simulation rate
+	private static final double simulationRate = 66.667;
+	private static final int simulationRateMsec = (int)Math.round(1000 / simulationRate);
+	//set amount of threads to be used for multi-threading gameplay mechanics
+	private static final int _THREADS = 6;
+	
+	//thread pool used to multi-threading game mechanics
+	private ThreadPoolExecutor threads;
+	//blocking queue used to task threads for use
+	private BlockingQueue<Runnable> workQueue;
+
+	//gamestate object for broadcast
+	private GameStateObject currentState;
+		
+	//place to hold tileMaps and levels
+	private List<GameStage> stages;
+	private int currentStage;
+		
+	//allows you to pause the server
+	private boolean run;
+	
+	//record of spawned players
+	private TreeMap<String, Player> players;
+	
+	public GameState(GameStateObject inputState, TreeMap<String, Player> newPlayers)
+	{
+		currentState = inputState;
+		stages = new ArrayList<GameStage>();
+		//players = new TreeMap<String, Player>();
+		players = newPlayers;
+		initialize();
+	}
+	public void run() 
+	{
+		long start;
+		run = true;
+		while(run)
+		{
+			{
+				start = System.nanoTime();
+				//do something
+				simulatePlayersPosition();
+				//shove it into GameStateObject(currentState)
+				currentState.setPlayers(players);
+				//Calculate how long to sleep			
+				try {
+					Thread.sleep(simulationRateMsec - (System.nanoTime() - start) / 1000000);
+				} catch (InterruptedException e) {
+					System.out.println("WORLD SIMULATION: no time to sleep: wait < 0");
+				}	catch(IllegalArgumentException ex) {
+					System.out.println("gamestate THREAD: CPU too slow");	
+				}	
+			}
+		}		
+	}
+	//Initialize the whole game
+	private void initialize()
+	{	
+		
+		//manually import maps here (root directory is in bin folder)
+		GameStage LEVEL1 = new GameStage("/Maps/testmap.map", 32);
+		
+		//initialize threadpool for multi-threading
+		threads = new ThreadPoolExecutor(_THREADS,_THREADS, 1, TimeUnit.SECONDS,  );
+		
+		//put them into stages list
+		stages.add(LEVEL1);
+		currentStage = 0;
+		currentState.setStage(stages.get(currentStage));
+		currentState.clearState();	
+	}
+
+	private void removePlayer(String IP)
+	{
+		players.remove(IP);
+	}
+	private void simulatePlayersPosition()
+	{
+		for(Map.Entry<String, Player> x : players.entrySet())
+		{
+			//single threaded at the moment
+			x.getValue().getNewPosition(stages.get(currentStage).levelMap);
+		}
+	}
+}

@@ -1,0 +1,28 @@
+package gameEntities;
+
+public class Player {
+	
+	public final int maxHealth = 100;
+	
+	public int health;
+	public String userName;
+	public float posX;
+	public float posY;
+	public boolean isShooting;
+	public boolean isFalling;
+	
+	//dimenions
+	public final int width = 30;
+	public final int height = 30;
+	public final int collisionWidth = 20;
+	public final int collisionHeight = 20;
+	
+	//moving statistics
+	public final float moveSpeed = 0.3f;
+	public final float maxSpeed = 1.6f;
+	public final float stopSpeed = 0.4f;
+	public final float fallSpeed = 0.15f;
+	public final float maxFallSpeed = 4.0f;
+	public final float jumpStart = -4.8f;
+	public final float stopJumpSpeed = 0.3f;
+}

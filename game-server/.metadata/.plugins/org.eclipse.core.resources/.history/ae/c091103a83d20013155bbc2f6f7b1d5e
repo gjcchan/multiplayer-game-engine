@@ -1,0 +1,116 @@
+package framework;
+
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+
+//one thread per client uses a lot of memory due to individual stack for client
+public class ConnectedSession implements Runnable {
+	private Socket connection;
+	private InputStream persistentInputStream;
+	private BufferedReader streamReader;
+	private DataOutputStream persistentOutputStream;
+	private boolean terminated;
+	
+	private SessionManager sessionStarter;
+	
+	//basic connection setup
+	public ConnectedSession(Socket newConnection)
+	{
+		connection = newConnection;
+		//setup parameters
+		
+		//connection.setSoTimeout(timeout);
+		try {
+			connection.setTcpNoDelay(true);
+		} catch (SocketException e1) {
+			e1.printStackTrace();
+		}
+		
+		terminated = true;
+		try {
+			persistentInputStream = connection.getInputStream();
+			streamReader = new BufferedReader(new InputStreamReader(this.persistentInputStream));
+			persistentOutputStream = new DataOutputStream(connection.getOutputStream());
+			//be sure to use flush()!
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	//more advanced setup have communication with parent
+	public ConnectedSession(Socket newConnection, SessionManager initializer)
+	{
+		sessionStarter = initializer;
+		connection = newConnection;
+		terminated = true;
+		try {
+			persistentInputStream = connection.getInputStream();
+			streamReader = new BufferedReader(new InputStreamReader(this.persistentInputStream));
+			persistentOutputStream = new DataOutputStream(connection.getOutputStream());
+			//be sure to use flush()!
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+		
+	//main listener loop
+	public void run()
+	{
+		terminated = false;
+		String newData;
+		while(!terminated)
+		{
+			try {
+				newData = streamReader.readLine(); // ONLY TERMINATES BY \n!!! no endline signal it continues reading forever!
+				//if client disconnects or a string too big
+				if(newData == null || newData.length() > 255)
+				{
+					terminated = true;
+					this.dispose();
+				}
+				else
+				{
+					transmit(this.addToQueue(newData));
+				}
+			} catch (IOException e) {
+				System.out.println(this.getIP() + " has disconnected");
+				terminated = true;
+				this.dispose();
+			}
+		}
+	}
+	
+	public void transmit(String data) throws IOException
+	{
+		persistentOutputStream.writeBytes(data +" \n");
+		persistentOutputStream.flush();
+	}
+	public void halt()
+	{
+		terminated = true;
+	}	
+	public void dispose()
+	{
+		halt();
+		sessionStarter.remove(this);
+	}
+	//supporting functions
+	public String getIP() 
+	{
+		return connection.getInetAddress().toString().substring(1);		
+	}
+	public int getPort()
+	{
+		return connection.getPort();
+	}
+	private String addToQueue(String data)
+	{
+		return data + ":" + sessionStarter.parseRequest(this.getIP(), data);
+	}
+	public void close() throws IOException
+	{
+		connection.close();
+	}
+}

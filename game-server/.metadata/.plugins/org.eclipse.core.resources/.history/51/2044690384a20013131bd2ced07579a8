@@ -1,0 +1,120 @@
+package dependencies;
+
+import gameEntities.Player;
+
+import java.awt.geom.Rectangle2D;
+
+import tileMap.Tile;
+import tileMap.TileMap;
+import AbstractObjects.Entities;
+
+public class AABBCollision {
+
+	public static final int nothing = 0;
+	public static final int blocked = 1;
+	public static final int blocked2 = 2;	
+	public static final int damage = 3;
+	//purely test function hences O(n^2) --use QuadTree instead
+	public static Coordinates getNewPosition(Entities object, TileMap level)
+	{
+		Coordinates newPoint = new Coordinates((float)object.boundingBox.getX() + object.dx, (float)object.boundingBox.getY() + object.dy);	
+		//different child clases can be identified like this to react differently
+		if(object instanceof Player)
+		{
+			
+		}
+		// doesnt work, need to factor in dy and dx
+		if(object.dx != 0 || object.dy != 0)
+		{
+			object.isFalling = true;
+			//create new rectangle
+			Rectangle2D A = new Rectangle2D.Float((float)(object.boundingBox.getX()+object.dx), 
+												  (float)(object.boundingBox.getY()+object.dy),
+												  (float)object.boundingBox.getWidth(), 
+												  (float)object.boundingBox.getHeight());
+			for(Tile mapTile : level.map)
+			{
+				//create rectangle for the other object
+				Rectangle2D B = new Rectangle2D.Float((float)(mapTile.boundingBox.getX()+mapTile.dx), 
+													  (float)(mapTile.boundingBox.getY()+mapTile.dy),
+													  (float)mapTile.boundingBox.getWidth(), 
+													  (float)mapTile.boundingBox.getHeight());
+				//check to see if they intersect
+				if(intersect(A, B))
+				{
+					//checks for all collisions, and selects the most intense intersection as the new position limit
+					switch(mapTile.getType())
+					{
+						default:
+							break;
+						case blocked:
+						case blocked2:
+							Rectangle2D collidingBox = A.createIntersection(B);
+							float intersectWidth = (float) collidingBox.getWidth();
+							float intersectHeight = (float) collidingBox.getHeight();
+							
+							//super hack way, since Y-axis is checked and adjusted first first, need something to check if it's horizontal collision or not
+							// it checks if it is a horizontal rectangle (vertical collision) or vertical rectangle (horizontal collision) vulnerable to super high speed velocities ie > Max(playerHeight, objectHeight)
+							if(intersectHeight > 1 && intersectWidth > intersectHeight)
+							{
+								if(object.dy > 0)
+								{
+									newPoint.y = (float) (object.boundingBox.getY() + object.dy - intersectHeight);
+									object.isFalling = false;
+								}
+								else if(object.dy < 0)
+									newPoint.y = (float) (object.boundingBox.getY() + object.dy + intersectHeight);	
+								object.dy = 0;
+								//adjusted new pos, so X can be recalc
+								A = new Rectangle2D.Float((float)A.getX(), (float)newPoint.y, (float)A.getWidth(), (float)A.getHeight());
+								intersectWidth = getIntersect("X", A, B);	
+							}
+							
+							//can jump once, and it hit ground no more jumps if object.dx != 0
+							if(intersectWidth > 0 && intersectWidth < intersectHeight)
+							{
+								if(object.dx > 0)
+									newPoint.x = (float) (object.boundingBox.getX() + object.dx - intersectWidth);
+								else if(object.dx < 0)
+									newPoint.x = (float) (object.boundingBox.getX() + object.dx + intersectWidth);
+								object.dx = 0;
+								A = new Rectangle2D.Float((float)newPoint.x, (float)A.getY(), (float)A.getWidth(), (float)A.getHeight());
+								//intersectHeight = getIntersect("Y", A, B);	
+							}
+							break;				
+						case damage:
+							break;
+					}
+				}
+			}			
+		}
+		return newPoint;
+	}
+	
+	private static boolean intersect(Rectangle2D A, Rectangle2D B)
+	{
+		return A.intersects(B);
+	}
+	private static float getIntersect(String axis, Rectangle2D A, Rectangle2D B)
+	{
+		Rectangle2D intersectRectangle= A.createIntersection(B);
+		switch(axis)
+		{
+			case "x":
+			case "X":
+				if(intersectRectangle.getHeight() > 0)
+					return (float)intersectRectangle.getWidth();
+				else
+					return 0;
+			case "y":
+			case "Y":
+				if(intersectRectangle.getWidth() > 0)
+					return (float) A.createIntersection(B).getHeight();
+				else
+					return 0;	
+			default:
+				return (Float) null;
+		}
+	}
+
+}

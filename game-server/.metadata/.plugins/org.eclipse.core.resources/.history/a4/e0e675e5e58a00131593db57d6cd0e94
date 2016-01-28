@@ -1,0 +1,95 @@
+package dependencies;
+
+import tileMap.TileMap;
+
+
+//tile map collision detector
+public class CollisionDetector {
+	
+	public static int blocked = 1;
+	
+	//make indicator so that it knows how much it exceeded block by?
+	
+	public static boolean verticalCollisionAbove(TileMap map, int posX, int posY)
+	{
+		int currCol = posX/ map.getTileSize();
+		int currRow = posY/ map.getTileSize();
+		if(map.getType(currRow-1, currCol) == blocked && posY <= (currRow-1)*map.getTileSize())
+			return true;
+		else
+			return false;
+	}
+	public static boolean verticalCollisionBelow(TileMap map, int posX, int posY)
+	{
+		int currCol = posX/ map.getTileSize();
+		int currRow = posY/ map.getTileSize();
+		if(map.getType(currRow+1, currCol) == blocked && posY >= currRow*map.getTileSize())
+			return true;
+		else
+			return false;
+	}
+	public static boolean horizontalCollisionLeft(TileMap map, float posX, float posY)
+	{
+		int currCol = (int)posX/ map.getTileSize();
+		int currRow = (int)posY/ map.getTileSize();
+		if(map.getType(currRow, currCol-1) == blocked && posX <= (currCol-1)*map.getTileSize())
+			return true;
+		else
+			return false;
+
+	}
+	public static boolean horizontalCollisionRight(TileMap map, float posX, float posY)
+	{
+		int currCol = (int)posX/ map.getTileSize();
+		int currRow = (int)posY/ map.getTileSize();
+		System.out.println(map.getType(currRow, currCol));
+		if(map.getType(currRow, currCol) == blocked && posX >= (currCol)*map.getTileSize())
+			return true;
+		else
+			return false;
+	}
+	
+	//calculate object destination
+	public static double calculateDestinationX(TileMap map, double currentXpos, double currentYpos, double dx)
+	{
+		if(dx > 0)
+		{
+			if(horizontalCollisionRight(map, (int)(currentXpos+dx), (int)currentYpos))
+				return currentXpos;
+			else
+				return currentXpos+dx;
+		}
+		else if(dx < 0)
+		{
+			if(horizontalCollisionLeft(map, (int)(currentXpos+dx), (int)currentYpos))
+				return currentXpos;
+			else
+				return currentXpos+dx;			
+		}
+		else
+		{
+			return currentXpos;
+		}
+	}
+	public static double calculateDestinationY(TileMap map, double currentXpos, double currentYpos, double dy)
+	{
+		if(dy > 0)
+		{
+			if(verticalCollisionBelow(map, (int)(currentXpos), (int)(currentYpos+dy)))
+				return currentYpos;
+			else
+				return currentYpos+dy;
+		}
+		else if(dy < 0)
+		{
+			if(verticalCollisionAbove(map, (int)(currentXpos), (int)(currentYpos+dy)))
+				return currentYpos;
+			else
+				return currentYpos+dy;			
+		}
+		else
+		{
+			return currentXpos;
+		}
+	}
+}

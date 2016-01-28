@@ -1,0 +1,10 @@
+package corelogic;
+
+import java.util.List;
+import java.util.Queue;
+
+import framework.ConnectionInfoUDP;
+
+public class Authenticator {
+	private List<ConnectionInfoUDP> IPtable;
+}

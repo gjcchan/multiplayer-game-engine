@@ -1,0 +1,97 @@
+package gameEntities;
+
+public class Player {
+	
+	public final int maxHealth = 100;
+	
+	public int health;
+	public String userName;
+	public float posX;
+	public float posY;
+	public boolean isShooting;
+	public boolean isFalling;
+	public boolean isJumping;
+	
+	//dimenions
+	private final int width = 30;
+	private final int height = 30;
+	private final int collisionWidth = 20;
+	private final int collisionHeight = 20;
+	
+	//moving statistics
+	private final float moveSpeed = 0.3f;
+	private final float maxSpeed = 1.6f;
+	private final float stopSpeed = 0.4f;
+	private final float fallSpeed = 0.15f;
+	private final float maxFallSpeed = 4.0f;
+	private final float jumpStart = -4.8f;
+	private final float stopJumpSpeed = 0.3f;
+	
+	public void hit(int damage)
+	{
+		health -= damage;
+	}
+
+	private void getNextPosition() {
+		
+		// movement
+		if(left) {
+			dx -= moveSpeed;
+			if(dx < -maxSpeed) 
+			{
+				dx = -maxSpeed;
+			}
+		}
+		else if(right) 
+		{
+			dx += moveSpeed;
+			if(dx > maxSpeed) 
+			{
+				dx = maxSpeed;
+			}
+		}
+		else {
+			if(dx > 0) 
+			{
+				dx -= stopSpeed;
+				if(dx < 0) 
+				{
+					dx = 0;
+				}
+			}
+			else if(dx < 0) 
+			{
+				dx += stopSpeed;
+				if(dx > 0) 
+				{
+					dx = 0;
+				}
+			}
+		}		
+		// jumping
+		if(isJumping && !isFalling) 
+		{
+			dy = jumpStart;
+			isFalling = true;
+		}
+		
+		// falling
+		if(isFalling) {	
+			if(dy > 0) 
+			{
+				isJumping = false;
+			}
+				
+			if(dy < 0 && !isJumping)
+			{
+				dy += stopJumpSpeed;
+			}
+			
+			if(dy > maxFallSpeed) 
+			{
+				dy = maxFallSpeed;
+			}		
+		}
+		
+	}
+}

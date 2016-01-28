@@ -1,0 +1,10 @@
+package gameEntities;
+
+public class Player {
+	public int health;
+	public String userName;
+	public float posX;
+	public float posY;
+	public boolean isShooting;
+	public boolean isFalling;
+}

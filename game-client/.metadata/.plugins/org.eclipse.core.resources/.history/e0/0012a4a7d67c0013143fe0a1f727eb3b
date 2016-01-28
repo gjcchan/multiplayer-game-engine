@@ -1,0 +1,171 @@
+package Network;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.StreamCorruptedException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.InflaterOutputStream;
+
+import framework.receiveData;
+import framework.sendData;
+
+public class UDPManager implements Runnable{
+	//listener port
+	private int port;
+	//tramsit port
+	private int outPort;
+	private DatagramSocket listener;
+	private sendData privateGameState;
+	
+	//input streams, used to rebuild objects from byte arrays
+	private ByteArrayInputStream dataInputStream;
+	private ObjectInputStream objectStream;
+
+	//output streams used to turn objects into byte arrays
+	ByteArrayOutputStream dataOutputStream;
+	ObjectOutputStream objectOut;
+	
+	//buffer size (a place to store the bytes coming and going out), set if you receive too much data it will overflow, underflow is not an issue
+    byte[] sendDataBuffer;
+    byte[] receiveDataBuffer;
+    
+    //shared global gamestate for update
+    sendData gameState;
+	
+	//static parameters
+	private static final int sendBufferSize = 1024;
+	private static final int receiveBufferSize = 1024;
+	
+	public UDPManager(int newPort)
+	{
+		try {
+			listener = new DatagramSocket(newPort);
+			sendDataBuffer = new byte[sendBufferSize];
+			receiveDataBuffer = new byte[receiveBufferSize];
+			port = newPort;		
+			outPort = newPort;
+			gameState = new sendData();
+			//initialize serializer streams
+			dataOutputStream = new ByteArrayOutputStream();
+			objectOut = new ObjectOutputStream(dataOutputStream);		
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		
+	}
+	public UDPManager(int newPort, sendData newGameState)
+	{
+		try {
+			listener = new DatagramSocket(newPort);
+			sendDataBuffer = new byte[sendBufferSize];
+			receiveDataBuffer = new byte[receiveBufferSize];
+			port = newPort;		
+			outPort = newPort;
+			gameState = new sendData();
+			//initialize serializer streams
+			dataOutputStream = new ByteArrayOutputStream();
+			objectOut = new ObjectOutputStream(dataOutputStream);
+			privateGameState = newGameState;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		
+	}
+	@Override
+	public void run() 
+	{
+		while(true)
+		{
+			DatagramPacket receivePacket = new DatagramPacket(receiveDataBuffer, receiveDataBuffer.length);
+			try {			
+				//listen block waiting for object to come in
+				listener.receive(receivePacket);
+				port = receivePacket.getPort();
+								
+				//initialize the streams to read the data
+				
+				//initialize and run inflater
+				ByteArrayOutputStream output = new ByteArrayOutputStream(receiveBufferSize);
+				InflaterOutputStream ios = new InflaterOutputStream(output);				
+				ios.write(receiveDataBuffer);
+				//ios.finish();
+				ios.close();
+				//redeploy inflated packet to buffer
+				receiveDataBuffer = output.toByteArray();
+				//output.close();
+				dataInputStream = new ByteArrayInputStream(receiveDataBuffer);
+				objectStream = new ObjectInputStream(dataInputStream);
+				
+				//set new receive as new state		
+				//turn bytes into object
+				sendData loopPrivateGameState = (sendData)objectStream.readObject();
+				privateGameState.playerList = loopPrivateGameState.playerList;
+				//System.out.println("objectRecieved");
+				//close up existing stream
+				objectStream.close();
+				dataInputStream.close();		
+				//System.out.println(privateGameState.playerList.get(0).posX+" , " +privateGameState.playerList.get(0).posY);
+			} catch (StreamCorruptedException e) {
+				//stream header read error
+				System.out.println("corrupted packet or unrecognized object");
+			} catch (ClassNotFoundException e) {
+				// When rebuilding object fails
+				System.out.println("unrecognized object");
+			}catch (IOException e) {
+					// general network failure
+					e.printStackTrace();
+				}			
+		}
+		
+	}
+	
+	public void dispose() throws IOException
+	{
+		//close listener and its sessions
+		listener.close();
+		
+		//close serializers
+		objectOut.close();
+		dataOutputStream.close();
+	}
+	public void transmitObject(Object c, String IP, int newPort) throws IOException
+	{
+		dataOutputStream = new ByteArrayOutputStream();
+		objectOut = new ObjectOutputStream(dataOutputStream);
+		objectOut.writeObject(c);
+		//System.out.println(dataOutputStream.toByteArray().length);
+		//deflater code
+		
+		ByteArrayOutputStream tempByteArray = new ByteArrayOutputStream();
+		DeflaterOutputStream dos = new DeflaterOutputStream(tempByteArray);
+		dos.write(dataOutputStream.toByteArray());
+		dos.finish();
+		//dos.flush();
+		//sendDataBuffer = tempByteArray.toByteArray();
+		//receiveData temp = (receiveData)c;
+		//System.out.println(temp.keyUp  +" , " +  temp.keyLeft  +" , " +  temp.keyRight);
+		sendDataBuffer = dataOutputStream.toByteArray();
+		//System.out.println(tempByteArray.toByteArray().length);
+		DatagramPacket packet = new DatagramPacket(sendDataBuffer, sendDataBuffer.length, InetAddress.getByName(IP), newPort);
+		//implement delta encoding here?		
+		listener.send(packet);		
+		objectOut.close();
+		dataOutputStream.close();	
+		tempByteArray.close();
+		dos.close();
+	}
+	public void transmitObject(Object c, String IP) throws IOException
+	{
+		transmitObject(c, IP, outPort);
+	}		
+}

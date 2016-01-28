@@ -1,0 +1,17 @@
+package framework;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+
+public interface ObjectTransmitter {
+	//input streams, used to rebuild objects from byte arrays
+	ByteArrayInputStream dataInputStream;
+	ObjectInputStream objectStream;
+	
+	//output streams used to turn objects into byte arrays
+	ByteArrayOutputStream dataOutputStream;
+	ObjectOutputStream objectOut;
+
+}

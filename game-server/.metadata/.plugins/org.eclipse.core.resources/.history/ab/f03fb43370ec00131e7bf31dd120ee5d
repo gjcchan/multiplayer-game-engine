@@ -1,0 +1,66 @@
+package framework.Interface;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.DatagramPacket;
+import java.net.InetAddress;
+
+/*This is a shell for serializing objects for networks
+ * 
+ * 
+ */
+public class ObjectTransmitter {
+	//input streams, used to rebuild objects from byte arrays
+	private ByteArrayInputStream dataInputStream;
+	private ObjectInputStream objectStream;
+	
+	//output streams used to turn objects into byte arrays
+	private ByteArrayOutputStream dataOutputStream;
+	private ObjectOutputStream objectOut;
+	
+	public boolean _COMPRESSION = false;
+	
+	public byte[] serializeObject(Object c) throws IOException
+	{
+		dataOutputStream = new ByteArrayOutputStream();
+		objectOut = new ObjectOutputStream(dataOutputStream);
+		objectOut.writeObject(c);
+		byte[] serializedArray = dataOutputStream.toByteArray();
+		objectOut.close();
+		dataOutputStream.close();
+		
+		if(_COMPRESSION == true) 
+			serializedArray = deltaCompress(serializedArray);
+		
+		return serializedArray;
+	}
+	//algorithims copied of wikipedia, need to verify
+	public static byte[] deltaCompress(byte[] data)
+	{
+	    byte last = 0;
+	    for (int i = 0; i < data.length; i++)
+	    {
+	    	byte current = data[i];
+	    	data[i] = (byte) (data[i] - last);
+	        last = current;
+	    }
+		return data;
+	}
+	public static byte[] deltaDecompress(byte[] data)
+	{
+		byte last = 0;
+	    for (int i = 0; i < data.length; i++)
+	    {
+	    	data[i] = (byte) (data[i] + last);
+	        last = data[i];
+	    }
+	    return data;
+	}
+	public void broadcast()
+	{
+		//implement later
+	}
+}

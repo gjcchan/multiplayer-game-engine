@@ -1,0 +1,69 @@
+package Network;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.Socket;
+import java.net.UnknownHostException;
+
+import sharedResources.globalShare;
+
+public class TCPManager implements Runnable {
+	private Socket connection;
+	private DataOutputStream outToServer;
+	private InputStream persistentInputStream;
+	private BufferedReader streamReader;
+	
+	//players index
+	public  globalShare shared;
+	
+	public TCPManager(String IP, int port, globalShare newShared)
+	{
+		try {
+			connection = new Socket(IP, port);
+			connection.setTcpNoDelay(true);
+			DataOutputStream outToServer = new DataOutputStream(connection.getOutputStream());
+			shared = newShared;
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	@Override
+	public void run() 
+	{
+		String stringBuffer;
+		try {
+			persistentInputStream = connection.getInputStream();
+			streamReader = new BufferedReader(new InputStreamReader(this.persistentInputStream, "UTF-8"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		while(true)
+		{
+			try
+			{
+				//System.out.println(streamReader.readLine());
+				stringBuffer = streamReader.readLine();			
+				if(stringBuffer.charAt(0) == 'I')
+				{
+					String[] tempArray = stringBuffer.split(" ");
+					synchronized(shared)
+					{
+						shared.index = Integer.parseInt(tempArray[1]);					
+					}
+				}
+			}
+			catch (IOException e)
+			{
+				System.out.println(e);
+				break;
+			}			
+		}
+	}
+	
+}

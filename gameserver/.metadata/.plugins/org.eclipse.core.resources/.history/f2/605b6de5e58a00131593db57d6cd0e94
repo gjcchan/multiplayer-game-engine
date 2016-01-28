@@ -1,0 +1,185 @@
+package gameEntities;
+
+import dependencies.CollisionDetector;
+import tileMap.Tile;
+import tileMap.TileMap;
+
+public class Player {
+	
+	public int maxHealth = 100;
+	public int health;
+	public String userName;
+	public String IPAddress;
+	public int port;
+
+	public boolean isShooting;
+	
+	//movement state
+	public boolean leftKeyPress;
+	public boolean rightKeyPress;
+	public boolean isFalling;
+	public boolean isJumping;
+	
+	//Dimensions
+	private int width = 30;
+	private int height = 30;
+	private int collisionWidth = 30;
+	private int collisionHeight = 30;
+	
+	//moving statistics
+	private float moveSpeed = 0.3f;
+	private float maxSpeed = 1.6f;
+	private float stopSpeed = 0.4f;
+	private float fallSpeed = 0.15f;
+	private float maxFallSpeed = 4.0f;
+	private float jumpStart = -6.8f;
+	private float stopJumpSpeed = 0.3f;
+	
+	//status of impending movement
+	private boolean topLeft;
+	private boolean topRight;
+	private boolean bottomLeft;
+	private boolean bottomRight;
+	
+	// position and vector
+	protected double x;
+	protected double y;
+	protected double dx;
+	protected double dy;
+	
+	//constructor
+	public Player(int newPort)
+	{
+		health = maxHealth;
+		port = newPort;
+	}
+	public Player(int spawnX, int spawnY, int newPort)
+	{
+		health = maxHealth;
+		x = spawnX;
+		y = spawnY;
+		port = newPort;
+		System.out.println(x + "," + y);
+	}
+	public void hit(int damage)
+	{
+		health -= damage;
+	}
+	public double getPosX()
+	{
+		return x;
+	}
+	public double getPosY()
+	{
+		return y;
+	}
+	public void setPosition(double newX, double newY)
+	{
+		x = newX;
+		y = newY;
+	}
+	public void getNewPosition(TileMap map)
+	{
+		getNextPosition();
+		//setTestPos(map);
+		setPosition(x+dx, y+dy);
+	}
+	//no collision detection here
+	private void getNextPosition() {
+		// movement (horizontal)
+		if(leftKeyPress) {
+			dx -= moveSpeed;
+			if(dx < -maxSpeed) 
+			{
+				dx = -maxSpeed;
+			}
+		}
+		else if(rightKeyPress) 
+		{
+			dx += moveSpeed;
+			if(dx > maxSpeed) 
+			{
+				dx = maxSpeed;
+			}
+		}
+		else {
+			if(dx > 0) 
+			{
+				dx -= stopSpeed;
+				if(dx < 0) 
+				{
+					dx = 0;
+				}
+			}
+			else if(dx < 0) 
+			{
+				dx += stopSpeed;
+				if(dx > 0) 
+				{
+					dx = 0;
+				}
+			}
+		}
+		// jumping (vertical)
+		if(isJumping && !isFalling) 
+		{
+			dy = jumpStart;
+			isFalling = true;
+		}		
+		// falling
+		if(isFalling) {
+			dy += fallSpeed;
+			if(dy > 0) 
+			{
+				isJumping = false;
+			}
+			if(dy < 0 && !isJumping)
+			{
+				dy += stopJumpSpeed;
+			}
+			if(dy > maxFallSpeed) 
+			{
+				dy = maxFallSpeed;
+			}			
+		}	
+	}
+	//end of getnextpos
+	//now need to run collision detection
+
+
+	private void setTestPos(TileMap map)
+	{
+		double newX;
+		double newY;
+		if(dy > 0)
+			newY = CollisionDetector.calculateDestinationY(map, x, y+height, dy);
+		else if(dy < 0)
+		{
+			newY = CollisionDetector.calculateDestinationY(map, x, y, dy);
+			if(newY != y)
+				isFalling = true;
+			else
+			{
+				isFalling = false;
+				dy = 0;
+			}
+		}
+		else
+			newY = y+dy;
+		
+		if(dx > 0)
+			newX = CollisionDetector.calculateDestinationX(map, x+width, y, dx);
+		else if(dy < 0)
+		{
+			newX = CollisionDetector.calculateDestinationX(map, x, y, dx);
+			if(newX == x)
+				dx = 0;
+		}
+		else
+			newX = y+dy;	
+		setPosition(newX, newY);
+		
+	}
+
+
+}

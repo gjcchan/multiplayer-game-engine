@@ -1,0 +1,117 @@
+package main;
+
+import static org.lwjgl.opengl.GL11.GL_QUADS;
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
+import static org.lwjgl.opengl.GL11.glBegin;
+import static org.lwjgl.opengl.GL11.glBindTexture;
+import static org.lwjgl.opengl.GL11.glColor3f;
+import static org.lwjgl.opengl.GL11.glColor4f;
+import static org.lwjgl.opengl.GL11.glEnd;
+import static org.lwjgl.opengl.GL11.glTexCoord2f;
+import static org.lwjgl.opengl.GL11.glVertex2d;
+import static org.lwjgl.opengl.GL11.glVertex2i;
+
+import org.lwjgl.opengl.GL11;
+import org.newdawn.slick.Color;
+import org.newdawn.slick.TrueTypeFont;
+
+/**************** HELPERS FOR RENDERER *********
+ * 
+ * 
+ * @author George
+ *
+ */
+public class RenderExtension {
+
+	//keeping track of camerad
+	private int cameraX;
+	private int cameraY;
+	
+	private int gameWidth;
+	private int gameHeight;
+	
+	//text rendering
+	private TrueTypeFont font;
+	
+	protected void drawRectChecker(int x, int y, int width, int height)
+	{
+		if( (x+width > cameraX || x < cameraX+gameWidth) && (y+height > cameraY || y < cameraY+gameHeight))
+			drawRect(x-cameraX, y-cameraY, width, height);
+	}
+	protected boolean drawQuadChecker()
+	{
+		return true;
+	}
+	protected void drawTriangleChecker(int x, int y, int z, int x2, int y2, int z2)
+	{
+		if( (Math.min(x, Math.min(y, z)) >= cameraX || Math.max(x, Math.max(y, z)) <= cameraX+gameWidth) &&
+			(Math.min(x2, Math.min(y2,  z2)) >= cameraY || Math.max(x2, Math.max(y2, z2)) <= cameraY + gameHeight))
+			drawTriangle(x-cameraX, y-cameraX, z-cameraX, x2-cameraY,y2-cameraY,z2-cameraY);			
+	}
+	//fixed width square
+	protected void drawRect(int x, int y, int width, int height)
+	{
+		glBegin(GL_QUADS);
+			glTexCoord2f(0,0);	glVertex2i(x,y); //upperleft
+			glTexCoord2f(1,0);	glVertex2i(x+width,y); //upperright	
+			glTexCoord2f(1,1);	glVertex2i(x+width,y+height); //bottom-right
+			glTexCoord2f(0,1);	glVertex2i(x,y+height); // bottom-left
+		glEnd();	
+	}
+	protected void rotateQuad(int x, int y, int x2, int y2, double angle)
+	{
+		double radians = Math.toRadians(angle);
+		double topRightX = Math.cos(radians)*x2 - Math.sin(radians)*y;
+		double topRightY = Math.sin(radians)*x2  + Math.cos(radians)*y;
+		double bottomLeftX = Math.cos(radians)*x - Math.sin(radians)*y2;
+		double bottomLeftY = Math.sin(radians)*x + Math.cos(radians)*y2;
+		double bottomRightX = Math.cos(radians)*x2 - Math.sin(radians)*y2;
+		double bottomRightY = Math.sin(radians)*x2 + Math.cos(radians)*y2;
+		drawFreeQuad(x, y, (int)topRightX, (int)topRightY, (int)bottomLeftX, (int)bottomLeftY, (int)bottomRightX, (int)bottomRightY);
+		
+	}
+	//draw free quad
+	protected void drawFreeQuad(int originX, int originY, int topRightX, int topRightY, int bottomLeftX, int bottomLeftY, int bottomRightX, int bottomRightY)
+	{
+		glBegin(GL_QUADS);
+			glTexCoord2f(0,0);	glVertex2i(originX,originY); //upperleft
+			glTexCoord2f(1,0);	glVertex2i(topRightX,topRightY); //upperright	
+			glTexCoord2f(1,1);	glVertex2i(bottomRightX,bottomRightY); //bottom-right
+			glTexCoord2f(0,1);	glVertex2i(bottomLeftX,bottomLeftY); // bottom-left
+		glEnd();			
+	}
+	protected void drawTriangle(int x, int y, int z, int x2, int y2, int z2)
+	{
+		glBegin(GL_TRIANGLES);
+			glVertex2i(x,x2); //upperleft
+			glVertex2i(y,y2); //upperright			
+			glVertex2i(z,z2); //bottom-right			
+		glEnd();			
+	}
+	protected void drawLine(int x, int y, int x2, int y2)
+	{
+		//glLineWidth(3.8f);
+	    glBegin(GL11.GL_LINE_STRIP);
+		    glVertex2d(x, y);
+		    glVertex2d(x2, y2);
+	    glEnd();			
+	}
+	protected void drawQuadAngle(int x, int y, int width, int height, double angle)
+	{
+		double radians = Math.toRadians(angle);
+		drawRectChecker(x, y, (int)(width*Math.cos(radians)), (int)(height*Math.sin(radians)));
+	}
+	protected void drawRTT(long ping)
+	{
+		glColor3f(1.0f, 1.0f, 1.0f);	
+		//need to properly implement ping
+		font.drawString(10, 10, "Ping: " + ping +" ms", Color.white);
+		glBindTexture(GL_TEXTURE_2D, 0);		
+	}
+	protected void drawHUD()
+	{
+		glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
+		drawRect(gameWidth-200, 20, 180, 40);
+	}
+}

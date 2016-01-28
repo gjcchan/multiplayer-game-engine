@@ -1,0 +1,218 @@
+package network;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.StreamCorruptedException;
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+import network.extensions.ObjectTransmitter;
+import network.extensions.clientCommandDefinitions;
+import network.extensions.serverCommandDefinitions;
+import network.objects.RepackagedPlayer;
+import network.objects.sendData;
+import sharedResources.globalShare;
+import sharedResources.playerName;
+
+public class TCPManager extends ObjectTransmitter implements Runnable {
+	private Socket connection;
+	private DataOutputStream outToServer;
+	private InputStream persistentInputStream;
+
+	//players index
+	public  globalShare shared;
+	
+	public TCPManager(String IP, int port, globalShare newShared)
+	{
+		try {
+			connection = new Socket(IP, port);
+			connection.setTcpNoDelay(true);
+			outToServer = new DataOutputStream(connection.getOutputStream());
+			shared = newShared;
+			setUsername(shared.username);
+			refreshNames();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+			System.exit(0);
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(0);
+		}		
+	}
+
+	private void refreshNames() 
+	{
+		shared.playerNames.clear();
+		transmitToServer(clientCommandDefinitions.GET_PLAYER_USERNAMES);
+	}
+	private void setUsername(String name) 
+	{
+		transmitToServer(clientCommandDefinitions.UPDATE_PLAYER_USERNAME + " " + name);
+	}
+	/*public void transmitToServer(String data)
+	{
+		try {
+		outToServer.writeBytes(data +" \n");
+		outToServer.flush();
+		} catch (IOException e) {
+			System.out.println("ERROR: transmitting to server");
+			e.printStackTrace();
+		}
+	}*/
+	public void transmitToServer(String data)
+	{
+		try {
+			transmitToServer(
+					appendTCPHeader(serializeObject(data), "")
+					);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	public void transmitToServer(Object data)
+	{
+		try {
+			transmitToServer(
+					appendTCPHeader(serializeObject(data), "")
+					);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}		
+	}
+	public void transmitToServer(byte[] data) throws IOException
+	{
+		outToServer.write(data, 0, data.length);
+		outToServer.flush();
+	}
+	/************************ PARSING COMMANDS **************************
+	 * 
+	 *  Use the dictionary create a command list for TCP transmit usage.
+	 *  Users can choose to use TCP to transmit game-data if desired, but for this framework
+	 *  it is design to transmit strings only and parse them accordingly. If user feels need to send
+	 *  serializable objects, then it is done through custom code
+	 *  
+	 */	
+	public void parseString(String input)
+	{
+		if(input == "PONG")
+		{
+			shared.pingTime = System.currentTimeMillis() - shared.pingInitTime;
+			return;
+		}
+		//parses for string commands
+		input = input.substring(input.indexOf(':') == -1 ? 0 : input.indexOf(':')+1);
+		//assign player an index no. 
+		//if(stringBuffer.substring(0).equals(serverCommandDefinitions.ASSIGN_INDEX))
+		if(input.charAt(0) == serverCommandDefinitions.ASSIGN_INDEX)
+		{
+			String[] tempArray = input.split(" ");
+			synchronized(shared)
+			{
+				//get players index 
+				shared.index = Integer.parseInt(tempArray[1]);					
+			}
+		}
+		//gives client player names
+		//else if(stringBuffer.substring(0).equals(serverCommandDefinitions.RECEIVE_PLAYER_NAMES)) 
+		else if(input.substring(0).charAt(0) == serverCommandDefinitions.RECEIVE_PLAYER_NAMES)
+		{
+			String[] listOfNames = input.substring(2).split(" ");
+			for(String x : listOfNames) 
+			{
+				String[] tempString = x.split("-");
+				synchronized(shared)
+				{
+					try {
+						shared.playerNames.put(Integer.parseInt(tempString[0]),  tempString[1]);
+					} catch (Exception ex) {
+						System.out.println("ERROR WRITING playerName: " +  Arrays.toString(tempString));
+					}
+				}
+			}
+		}		
+	}
+
+	
+	@Override
+	public void run() 
+	{
+		String stringBuffer;
+
+		int dataLength = 0;
+		int objectID = 0;
+		BufferedReader streamReader;
+		DataInputStream dataReader;
+		Object a;
+		//used to calculating time between packet
+		long initialPacket =  System.nanoTime();
+		//end of stream flag
+		ObjectInputStream is;
+		try {
+			persistentInputStream = connection.getInputStream();
+			streamReader = new BufferedReader(new InputStreamReader(this.persistentInputStream, "UTF-8"));
+			//dataReader = new DataInputStream(connection.getInputStream());
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(0);
+		} 
+		//listen for TCP msg from server
+		while(true)
+		{
+			try
+			{					
+				a = buildObject(persistentInputStream);
+				if(a instanceof String) 
+				{
+					//System.out.println((String)a); 
+					parseString((String)a);
+				}
+				else if(a instanceof sendData)
+				{
+					shared.betweenState = (System.nanoTime() - initialPacket)/ 1000000;
+					initialPacket = System.nanoTime();
+					//move current state to old state to allow new state to come in (interpolation)
+					if(shared.UDPstate.playerList != null)
+					{
+						shared.previousState.playerList = new ArrayList<RepackagedPlayer>(shared.UDPstate.playerList);	
+					}
+					shared.UDPstate = (sendData)a;
+					shared.syncPlayerLists();
+					/*if(shared.UDPstate.playerList.size() > 0)
+						System.out.println(shared.UDPstate.playerList.get(0).posX + ", " + shared.UDPstate.playerList.get(0).posY);*/
+				}
+				
+
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+			} catch (StreamCorruptedException sce) {
+				sce.printStackTrace();
+			} catch (EOFException eof) {
+				eof.printStackTrace();
+			}
+			catch(SocketException se) 
+			{
+				System.out.println("DISCONNECTED FROM SERVER");
+				System.exit(0);				
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+				System.out.println(e);
+			} 
+		}
+	}
+
+	
+}

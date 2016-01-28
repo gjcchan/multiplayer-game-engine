@@ -1,0 +1,238 @@
+package gameEntities;
+
+import dependencies.CollisionDetector;
+import tileMap.Tile;
+import tileMap.TileMap;
+
+public class Player {
+	
+	public int maxHealth = 100;
+	public int health;
+	public String userName;
+	public String IPAddress;
+
+	public boolean isShooting;
+	
+	//movement state
+	public boolean leftKeyPress;
+	public boolean rightKeyPress;
+	public boolean isFalling;
+	public boolean isJumping;
+	
+	//Dimensions
+	private int width = 30;
+	private int height = 30;
+	private int collisionWidth = 20;
+	private int collisionHeight = 20;
+	
+	//moving statistics
+	private float moveSpeed = 0.3f;
+	private float maxSpeed = 1.6f;
+	private float stopSpeed = 0.4f;
+	private float fallSpeed = 0.15f;
+	private float maxFallSpeed = 4.0f;
+	private float jumpStart = -6.8f;
+	private float stopJumpSpeed = 0.3f;
+	
+	//status of impending movement
+	private boolean topLeft;
+	private boolean topRight;
+	private boolean bottomLeft;
+	private boolean bottomRight;
+	
+	// position and vector
+	protected double x;
+	protected double y;
+	protected double dx;
+	protected double dy;
+	
+	//constructor
+	public Player()
+	{
+		health = maxHealth;
+	}
+	public Player(int spawnX, int spawnY)
+	{
+		health = maxHealth;
+		x = spawnX;
+		y = spawnY;
+		System.out.println(x + "," + y);
+	}
+	public void hit(int damage)
+	{
+		health -= damage;
+	}
+	public double getPosX()
+	{
+		return x;
+	}
+	public double getPosY()
+	{
+		return y;
+	}
+	public void setPosition(double newX, double newY)
+	{
+		x = newX;
+		y = newY;
+	}
+	public void getNewPosition(TileMap map)
+	{
+		getNextPosition();
+		//collisionDetection(map);
+	}
+	//no collision detection here
+	private void getNextPosition() {
+		// movement (horizontal)
+		if(leftKeyPress) {
+			dx -= moveSpeed;
+			if(dx < -maxSpeed) 
+			{
+				dx = -maxSpeed;
+			}
+		}
+		else if(rightKeyPress) 
+		{
+			dx += moveSpeed;
+			if(dx > maxSpeed) 
+			{
+				dx = maxSpeed;
+			}
+		}
+		else {
+			if(dx > 0) 
+			{
+				dx -= stopSpeed;
+				if(dx < 0) 
+				{
+					dx = 0;
+				}
+			}
+			else if(dx < 0) 
+			{
+				dx += stopSpeed;
+				if(dx > 0) 
+				{
+					dx = 0;
+				}
+			}
+		}
+		// jumping (vertical)
+		if(isJumping && !isFalling) 
+		{
+			dy = jumpStart;
+			isFalling = true;
+		}		
+		// falling
+		if(isFalling) {
+			dy += fallSpeed;
+			if(dy > 0) 
+			{
+				isJumping = false;
+			}
+			if(dy < 0 && !isJumping)
+			{
+				dy += stopJumpSpeed;
+			}
+			if(dy > maxFallSpeed) 
+			{
+				dy = maxFallSpeed;
+			}			
+		}	
+	}
+	//end of getnextpos
+	//now need to run collision detection
+
+	//calculates which tiles of the tileMapa are the one used for collision detection
+	private void calculateCorners(TileMap map, double x, double y) 
+	{	
+		int leftTile = (int)(x - collisionWidth / 2) / map.getTileSize();
+		int rightTile = (int)(x + collisionWidth / 2 - 1) / map.getTileSize();
+		int topTile = (int)(y - collisionHeight / 2) / map.getTileSize();
+		int bottomTile = (int)(y + collisionHeight / 2 - 1) / map.getTileSize();
+		
+		int tl = map.getType(topTile, leftTile);
+		int tr = map.getType(topTile, rightTile);
+		int bl = map.getType(bottomTile, leftTile);
+		int br = map.getType(bottomTile, rightTile);
+		
+		topLeft = tl == Tile.BLOCKED;
+		topRight = tr == Tile.BLOCKED;
+		bottomLeft = bl == Tile.BLOCKED;
+		bottomRight = br == Tile.BLOCKED;	
+	}
+	
+
+/*	private void collisionDetection(TileMap map)
+	{
+		//the current position
+		int currCol = (int)x/ map.getTileSize();
+		int currRow = (int)y/ map.getTileSize();
+		//new desired position
+		double xdest = x + dx;
+		double ydest = y + dy;
+		
+		double xtemp = x;
+		double ytemp = y;
+		calculateCorners(map, x, ydest);
+		if(dy < 0) 
+		{
+			if(topLeft || topRight) 
+			{
+				dy = 0;
+				ytemp = currRow * map.getTileSize() + collisionHeight / 2;
+			}
+			else 
+			{
+				ytemp += dy;
+			}
+		}
+		if(dy > 0)
+		{
+			if(bottomLeft || bottomRight) 
+			{
+				dy = 0;
+				isFalling = false;
+				ytemp = (currRow + 1) * map.getTileSize() - collisionHeight / 2;
+			}
+			else 
+			{
+				ytemp += dy;
+			}
+		}
+		//now for x-axis
+		calculateCorners(map, xdest, y);
+		if(dx < 0) 
+		{
+			if(topLeft || bottomLeft) 
+			{
+				dx = 0;
+				xtemp = currCol * map.getTileSize() + collisionWidth / 2;
+			}
+			else 
+			{
+				xtemp += dx;
+			}
+		}
+		if(dx > 0) 
+		{
+			if(topRight || bottomRight) 
+			{
+				dx = 0;
+				xtemp = (currCol + 1) * map.getTileSize() - collisionWidth / 2;
+			}
+			else 
+			{
+				xtemp += dx;
+			}
+		}
+		if(!isFalling) 
+		{
+			calculateCorners(map, x, ydest + 1);
+			if(!bottomLeft && !bottomRight) 
+			{
+				isFalling = true;
+			}
+		}
+		setPosition(xtemp, ytemp);	
+	} */
+}

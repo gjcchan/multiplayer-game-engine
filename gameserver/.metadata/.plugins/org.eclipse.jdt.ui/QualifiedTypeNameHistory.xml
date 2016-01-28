@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="framework.ConnectedSession"/>
+<fullyQualifiedTypeName name="java.util.Queue"/>
+<fullyQualifiedTypeName name="framework.recieveData"/>
+<fullyQualifiedTypeName name="java.util.zip.DeflaterOutputStream"/>
+<fullyQualifiedTypeName name="dependencies.CollisionDetector"/>
+<fullyQualifiedTypeName name="gameEntities.Entities"/>
+<fullyQualifiedTypeName name="AbstractObjects.Entities"/>
+<fullyQualifiedTypeName name="java.awt.Rectangle"/>
+<fullyQualifiedTypeName name="java.util.concurrent.TimeUnit"/>
+<fullyQualifiedTypeName name="java.util.concurrent.BlockingQueue"/>
+<fullyQualifiedTypeName name="java.util.concurrent.ArrayBlockingQueue"/>
+<fullyQualifiedTypeName name="java.util.concurrent.LinkedBlockingQueue"/>
+<fullyQualifiedTypeName name="tileMap.TileMap"/>
+<fullyQualifiedTypeName name="framework.SessionManager"/>
+<fullyQualifiedTypeName name="framework.Interface.ObjectTransmitter"/>
+<fullyQualifiedTypeName name="java.io.InputStream"/>
+<fullyQualifiedTypeName name="network.extensions.ObjectTransmitter"/>
+<fullyQualifiedTypeName name="network.objects.receiveData"/>
+</qualifiedTypeNameHistroy>

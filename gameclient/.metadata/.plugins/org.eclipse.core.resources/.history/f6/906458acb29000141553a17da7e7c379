@@ -1,0 +1,104 @@
+package sharedResources;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.TreeMap;
+
+import network.objects.receiveData;
+import network.objects.sendData;
+
+public class globalShare 
+{
+	public int index;
+	public sendData UDPstate;
+	//used for interpolation
+	public sendData previousState;
+	public long betweenState;
+	
+	//new state used for rendering
+	public sendData previousSyncedState;
+	public sendData currentSyncedState;
+	
+	//public List<playerName> playerNames;
+	public TreeMap<Integer, String> playerNames;
+	public String username;
+	
+	public long pingInitTime;
+	public long pingTime;
+	
+	//used for client side prediction and reconciliation
+	
+	
+	public globalShare() {
+		playerNames = new TreeMap<Integer, String>();
+	}
+	
+	
+	
+	
+	//used to sync players between snapshots, otherwise, people leaving and joining will get the index mixed up
+	public void syncPlayerLists()
+	{
+			if(previousState != null && UDPstate != null)
+			{
+				try {
+					//we are cloning them so we don't have sync issues because network and render thread clash
+					ArrayList<RepackagedPlayer> tempPreviousList = new ArrayList<RepackagedPlayer>(previousState.playerList);
+					ArrayList<RepackagedPlayer> tempCurrentList = new ArrayList<RepackagedPlayer>(UDPstate.playerList);
+					
+					//copy old list into previous list
+					previousSyncedState = currentSyncedState;
+					
+					ArrayList<RepackagedPlayer> newList = new ArrayList<RepackagedPlayer>();
+					ArrayList<RepackagedPlayer> missingPlayers = new ArrayList<RepackagedPlayer>();
+					int currentIndex;
+					for(int x = 0; x < tempPreviousList.size(); x++)
+					{
+						currentIndex = tempPreviousList.get(x).playerIndex;
+						//searches for the object in currentState that matches the previousState in the array
+						for(int y = 0; y < tempCurrentList.size(); y++)
+						{
+							if(tempCurrentList.get(y).playerIndex == currentIndex)
+							{
+								//append to new array, and dump it from old array
+								newList.add(tempCurrentList.get(y));
+								tempCurrentList.remove(y);
+								break;
+							}
+							missingPlayers.add(tempPreviousList.get(x));
+						}
+					}
+					for(RepackagedPlayer x : missingPlayers)
+					{
+						tempPreviousList.remove(x);
+					}
+					//player has been added
+					if(tempCurrentList.size() > 0)
+					{
+						for(RepackagedPlayer x : tempCurrentList)
+						{
+							tempPreviousList.add(x);
+							newList.add(x);
+						}
+					}
+					currentSyncedState = new sendData();
+					currentSyncedState.playerList = newList;
+					/*for(int x = 0; x < currentSyncedState.playerList.size(); x++)
+					{
+						System.out.println("SYNCED: " + x + ":  " + currentSyncedState.playerList.get(x).posX + ", " + currentSyncedState.playerList.get(x).posY);
+					}*/
+				}catch(NullPointerException nex) {
+					System.out.println("null issue on syncPlayerList()");
+					System.out.println("ARRAY SIZES : PREVIOUS=" + previousState.playerList.size() + " CURRENT=" + UDPstate.playerList.size() );
+					System.out.println("CONTENTS (PREVIOUS): " + Arrays.toString(previousState.playerList.toArray()) );
+					System.out.println("CONTENTS (PREVIOUS): " + Arrays.toString(UDPstate.playerList.toArray()) );
+					nex.printStackTrace();
+				} catch(IndexOutOfBoundsException iex) {
+					System.out.println("syncPlayerList(): out of bounds exception:");
+					System.out.println("ARRAY SIZES : PREVIOUS=" + previousState.playerList.size() + " CURRENT=" + UDPstate.playerList.size() );
+					iex.printStackTrace();
+				}
+			}
+	}
+}

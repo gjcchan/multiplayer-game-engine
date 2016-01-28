@@ -1,0 +1,57 @@
+import java.io.IOException;
+
+import Network.UDPManager;
+import framework.receiveData;
+
+
+public class keyPoller implements Runnable
+{
+	//how often to broadcast gamestate per sec
+	private static final int broadcastRate = 10;
+	private static final int broadcastRateMsec = 100; // 1000 / broadcastRate
+	//how often the server expects incoming per sec
+	private static final int cmdRate = 10;
+	private receiveData keys;
+	private receiveData oldKeys;
+	private UDPManager serverConnection;
+	private int udpPort;
+	
+	public keyPoller(receiveData inKeys, UDPManager connection, int port)
+	{
+		oldKeys = new receiveData();
+		keys = inKeys;
+		serverConnection = connection;
+		udpPort = port;
+	}
+	public void run() 
+	{
+		long start;
+		long elapsed;
+		long wait;
+		while(true)
+		{
+			try {
+				start = System.nanoTime();
+				synchronized(keys) 
+				{
+					keys.wait();
+					//if(oldKeys.keyUp != keys.keyUp || oldKeys.keyDown != keys.keyDown || oldKeys.keyLeft == keys.keyLeft)
+					if(!oldKeys.equals(keys))
+					{
+						serverConnection.transmitObject(keys, "127.0.0.1", udpPort);
+						oldKeys.keyUp = keys.keyUp;
+						oldKeys.keyDown = keys.keyDown;
+						oldKeys.keyLeft = keys.keyLeft;
+					}
+				}
+				//calcluate how long to sleep
+				elapsed = System.nanoTime() - start;
+				//wait = broadcastRateMsec - elapsed / 1000000;	
+				Thread.sleep(broadcastRateMsec - elapsed / 1000000);
+			} catch (InterruptedException | IOException | IllegalArgumentException e) {
+				System.out.println("BROADCAST THREAD: no time to sleep: wait < 0");
+			}		
+		}
+	}
+	
+}
